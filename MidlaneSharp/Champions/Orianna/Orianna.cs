@@ -39,7 +39,7 @@ namespace MidlaneSharp
             harass = new Menu("Harass", "Harass");
             harass.AddItem(new MenuItem("HUSEQ", "Use Q").SetValue(true));
             harass.AddItem(new MenuItem("HUSEW", "Use W").SetValue(true));
-            harass.AddItem(new MenuItem("HUSEE", "Use W").SetValue(true));
+            harass.AddItem(new MenuItem("HUSEE", "Use E").SetValue(true));
             harass.AddItem(new MenuItem("HMANA", "Min. Mana Percent").SetValue(new Slider(50, 0, 100)));
 
             laneclear = new Menu("Lane/Jungle Clear", "LaneClear");
@@ -51,8 +51,8 @@ namespace MidlaneSharp
             misc = new Menu("Misc", "Misc");
             misc.AddItem(new MenuItem("MANTIGAPEW", "Anti Gap Closer With E->W").SetValue(true));
             misc.AddItem(new MenuItem("MINTIMPORTANT", "Interrupt Important Spells With Q->R").SetValue(true));
-
-            drawing.AddItem(new MenuItem("DDRAWBALL", "Draw Ball Position").SetValue(true));
+            misc.AddItem(new MenuItem("DDRAWBALL", "Draw Ball Position").SetValue(false));
+            misc.AddItem(new MenuItem("DDRAWKILL", "Draw Killable Enemy").SetValue(true));
 
             Config.AddSubMenu(combo);
             Config.AddSubMenu(harass);
@@ -74,7 +74,7 @@ namespace MidlaneSharp
 
             Spells[W] = new Spell(SpellSlot.W, 245f);
 
-            Spells[E] = new Spell(SpellSlot.E);
+            Spells[E] = new Spell(SpellSlot.E, 1100);
 
             Spells[R] = new Spell(SpellSlot.R, 330f);
 
@@ -138,7 +138,7 @@ namespace MidlaneSharp
                     else if (Spells[R].IsReady())
                     {
                         if(TargetSelector.SelectedTarget.ServerPosition.Distance(Ball.Position) < Spells[R].Range)
-                            Ball.Post(BallMgr.Command.Shockwave, null);
+                            Ball.Post(BallMgr.Command.Shockwave, TargetSelector.SelectedTarget);
                     }
                 }
             };
@@ -154,7 +154,11 @@ namespace MidlaneSharp
                         var enemies = enemy.GetEnemiesInRange(Spells[R].Range);
                         int prio_sum = 0;
                         foreach (var e in enemies)
+                        {
                             prio_sum += ShineCommon.Utility.GetPriority(e.ChampionName);
+                            if (e.HealthPercent < 50)
+                                prio_sum += 1;
+                        }
 
                         if (prio_sum >= 6)
                         {
@@ -169,7 +173,11 @@ namespace MidlaneSharp
                                 var enemies2 = pos.GetEnemiesInRange(Spells[R].Range);
                                 int prio_sum2 = 0;
                                 foreach (var e in enemies2)
+                                {
                                     prio_sum2 += ShineCommon.Utility.GetPriority(e.ChampionName);
+                                    if (e.HealthPercent < 50)
+                                        prio_sum2 += 1;
+                                }
 
                                 if (pos.Distance(ObjectManager.Player.ServerPosition) < Spells[Q].Range / 2f && prio_sum2 >= bestPrioSum)
                                     bestQPos = pos;
@@ -193,7 +201,11 @@ namespace MidlaneSharp
                     int prio_sum = 0;
                     var enemies = HeroManager.Enemies.Where(p => p.ServerPosition.Distance(Ball.Position) <= Spells[R].Range);
                     foreach (var enemy in enemies)
+                    {
                         prio_sum += ShineCommon.Utility.GetPriority(enemy.ChampionName);
+                        if (enemy.HealthPercent < 50)
+                            prio_sum += 1;
+                    }
 
                     if (prio_sum >= 6)
                     {
@@ -204,7 +216,7 @@ namespace MidlaneSharp
                     var t = TargetSelector.GetTarget(Spells[R].Range, TargetSelector.DamageType.Magical, true, null, Ball.Position);
                     if (t != null && ObjectManager.Player.CountEnemiesInRange(2000) <= 2)
                     {
-                        Ball.Post(BallMgr.Command.Shockwave, null);
+                        Ball.Post(BallMgr.Command.Shockwave, t);
                         return;
                     }
                 }
@@ -213,20 +225,16 @@ namespace MidlaneSharp
 
         public void BeforeDraw()
         {
-            foreach (var enemy in HeroManager.Enemies)
+            if (Config.Item("DDRAWKILL").GetValue<bool>())
             {
-                if (!enemy.IsDead && enemy.Health < CalculateComboDamage(enemy))
+                foreach (var enemy in HeroManager.Enemies)
                 {
-                    var killable_pos = Drawing.WorldToScreen(enemy.Position);
-                    Drawing.DrawText((int)killable_pos.X - 20, (int)killable_pos.Y + 35, System.Drawing.Color.Red, "Killable");
+                    if (!enemy.IsDead && enemy.Health < CalculateComboDamage(enemy))
+                    {
+                        var killable_pos = Drawing.WorldToScreen(enemy.Position);
+                        Drawing.DrawText((int)killable_pos.X - 20, (int)killable_pos.Y + 35, System.Drawing.Color.Red, "Killable");
+                    }
                 }
-            }
-
-            if (Config.Item("CUSER").GetValue<bool>() && Config.Item("CUSERMETHOD").GetValue<StringList>().SelectedIndex == 1 && ult.Item("DTOGGLER").GetValue<bool>() && TargetSelector.SelectedTarget != null)
-            {
-                Text.DrawText(null, "Toggle R Target",
-                    (int)(TargetSelector.SelectedTarget.HPBarPosition.X + TargetSelector.SelectedTarget.BoundingRadius / 2 - 10),
-                    (int)(TargetSelector.SelectedTarget.HPBarPosition.Y - 20), SharpDX.Color.Yellow);
             }
 
             if (Config.Item("DDRAWBALL").GetValue<bool>() && Ball.Position != Vector3.Zero)
@@ -341,22 +349,31 @@ namespace MidlaneSharp
 
                 case BallMgr.Command.Shockwave:
                 {
-                    if (Spells[R].IsReady() && CountEnemiesInRangePredicted(Spells[R].Range, 330) > 0)
+                    if (Spells[R].IsReady() && CountEnemiesInRangePredicted(Spells[R].Range, 330, target) > 0)
                         Spells[R].Cast();
                 }
                 break;
             }
         }
 
-        private int CountEnemiesInRangePredicted(float range, float width)
+        private int CountEnemiesInRangePredicted(float range, float width, Obj_AI_Hero t = null)
         {
             int cnt = 0;
+            bool hasTarget = false;
             foreach (var enemy in HeroManager.Enemies)
             {
                 Vector2 predictedPos = GetPredictedPos(enemy, Ball.Position, width);
                 if (predictedPos.Distance(Ball.Position.To2D()) < range)
+                {
                     cnt++;
+                    if (t != null && enemy.NetworkId == t.NetworkId)
+                        hasTarget = true;
+                }
             }
+
+            if (t != null && cnt == 1 && !hasTarget)
+                return 0;
+
             return cnt;
         }
 
@@ -434,7 +451,7 @@ namespace MidlaneSharp
                 Ball.Post(BallMgr.Command.Protect, ObjectManager.Player);
                 Ball.Post(BallMgr.Command.Dissonance, null);
                 if (OrbwalkingActiveMode == OrbwalkingComboMode) //combo anti gap closer self r
-                    Ball.Post(BallMgr.Command.Dissonance, null);
+                    Ball.Post(BallMgr.Command.Shockwave, null);
             }
         }
 
@@ -443,9 +460,7 @@ namespace MidlaneSharp
             if (sender.IsAlly && sender.IsChampion())
             {
                 if (Spells[E].IsReady() && sender.ServerPosition.Distance(ObjectManager.Player.ServerPosition) <= Spells[E].Range)
-                {
                     Ball.Post(BallMgr.Command.Protect, sender as Obj_AI_Hero);
-                }
             }
         }
 

@@ -179,15 +179,9 @@ namespace ShineCommon
 
             foreach (MenuItem it in drawing.Items)
             {
-                try
-                {
-                    Circle c = it.GetValue<Circle>();
-                    if (c.Active)
-                        Render.Circle.DrawCircle(ObjectManager.Player.Position, c.Radius, c.Color, 2);
-                }
-                catch
-                {
-                }
+                Circle c = it.GetValue<Circle>();
+                if (c.Active)
+                    Render.Circle.DrawCircle(ObjectManager.Player.Position, c.Radius, c.Color, 2);
             }
         }
 
