@@ -155,7 +155,7 @@ namespace Warwick
             };
 
 
-            Config = new Menu("Warwick | the Blood Hunter", "Warwick", true);
+            Config = new Menu("Warwick: Blood Hunter", "Warwick", true);
 
             TargetSelectorMenu = new Menu("Target Selector", "Target Selector");
             TargetSelector.AddToMenu(TargetSelectorMenu);
