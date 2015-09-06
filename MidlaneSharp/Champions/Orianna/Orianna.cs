@@ -266,7 +266,7 @@ namespace MidlaneSharp
             
             if (Spells[W].IsReady() && Config.Item("CUSEW").GetValue<bool>())
             {
-                if (CountEnemiesInRangePredicted(Spells[W].Range, 230) > 0)
+                if (CountEnemiesInRangePredicted(Spells[W].Range, 0.25f, 230) > 0)
                     Ball.Post(BallMgr.Command.Dissonance, null);
             }
 
@@ -291,7 +291,7 @@ namespace MidlaneSharp
 
             if (Spells[W].IsReady() && Config.Item("HUSEW").GetValue<bool>())
             {
-                if (CountEnemiesInRangePredicted(Spells[W].Range, 230) > 0)
+                if (CountEnemiesInRangePredicted(Spells[W].Range, 0.25f, 230) > 0)
                     Ball.Post(BallMgr.Command.Dissonance, null);
             }
 
@@ -324,45 +324,45 @@ namespace MidlaneSharp
 
         private void Ball_OnProcessCommand(Orianna.BallMgr.Command cmd, Obj_AI_Hero target)
         {
+            if (!Spells[(int)cmd].IsReady())
+                return;
+
             switch (cmd)
             {
                 case BallMgr.Command.Attack:
                 {
-                    if (Spells[Q].IsReady())
-                        Spells[Q].SPredictionCast(target, HitChance.High, 0, 1, Ball.Position);
+                    Spells[Q].SPredictionCast(target, HitChance.High, 0, 1, Ball.Position);
                 }
-                break;  
+                break;
 
                 case BallMgr.Command.Dissonance:
                 {
-                    if (Spells[W].IsReady())
-                        Spells[W].Cast();
+                    Spells[W].Cast();
                 }
                 break;
 
                 case BallMgr.Command.Protect:
                 {
-                    if (Spells[E].IsReady())
-                        Spells[E].CastOnUnit(target);
+                    Spells[E].CastOnUnit(target);
                 }
                 break;
 
                 case BallMgr.Command.Shockwave:
                 {
-                    if (Spells[R].IsReady() && CountEnemiesInRangePredicted(Spells[R].Range, 330, target) > 0)
+                    if (CountEnemiesInRangePredicted(Spells[R].Range, 330, 0.75f, target) > 0)
                         Spells[R].Cast();
                 }
                 break;
             }
         }
 
-        private int CountEnemiesInRangePredicted(float range, float width, Obj_AI_Hero t = null)
+        private int CountEnemiesInRangePredicted(float range, float width, float time, Obj_AI_Hero t = null)
         {
             int cnt = 0;
             bool hasTarget = false;
             foreach (var enemy in HeroManager.Enemies)
             {
-                Vector2 predictedPos = GetPredictedPos(enemy, Ball.Position, width);
+                Vector2 predictedPos = GetPredictedPos(enemy, Ball.Position, width, time);
                 if (predictedPos.Distance(Ball.Position.To2D()) < range)
                 {
                     cnt++;
@@ -377,7 +377,7 @@ namespace MidlaneSharp
             return cnt;
         }
 
-        private Vector2 GetPredictedPos(Obj_AI_Base target, Vector3 rangeCheckFrom, float width)
+        private Vector2 GetPredictedPos(Obj_AI_Base target, Vector3 rangeCheckFrom, float width, float time)
         {
             List<Vector2> path = target.GetWaypoints();
             if (path.Count <= 1) //if target is not moving, easy to hit
@@ -419,29 +419,34 @@ namespace MidlaneSharp
                 pathTime += t;
             }
 
-            for (int k = 0; k < 2; k++)
+            if (x[0] != -1 && x[1] != -1)
             {
-                if (x[k] != -1)
+                for (int k = x[0]; k <= x[1]; k++)
                 {
-                    Vector2 direction = (path[x[k] + 1] - path[x[k]]).Normalized();
-                    float distance = path[x[k] + 1].Distance(path[x[k]]) / 40;
-                    for (int i = 0; i < 40; i++)
+                    Vector2 direction = (path[k + 1] - path[k]).Normalized();
+                    float distance = width;
+                    int steps = (int)Math.Floor(path[k].Distance(path[k + 1]) / distance);
+                    for (int i = 0; i < steps; i++)
                     {
-                        Vector2 center = path[x[k]] + (direction * distance * i) + (direction * distance / 2);
-                        float t = 0.75f;
+                        Vector2 pA = path[k] + (direction * distance * i);
+                        Vector2 pB = path[k] + (direction * distance * (i + 1));
+                        Vector2 center = (pA + pB) / 2f;
 
-                        Vector2 pA = center - direction * width / 2;
-                        Vector2 pB = center + direction * width / 2;
+                        float t = time + Game.Ping / 2000f;
+
                         float arriveTimeA = target.ServerPosition.To2D().Distance(pA) / target.MoveSpeed;
                         float arriveTimeB = target.ServerPosition.To2D().Distance(pB) / target.MoveSpeed;
 
                         if (Math.Min(arriveTimeA, arriveTimeB) <= t && Math.Max(arriveTimeA, arriveTimeB) >= t)
                             return center;
                     }
+
+                    if (steps == 0)
+                        return path[x[1]];
                 }
             }
 
-            return path[path.Count - 1];
+            return Vector2.Zero;
         }
 
         public override void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)

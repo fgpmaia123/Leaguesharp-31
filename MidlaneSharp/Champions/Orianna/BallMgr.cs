@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,7 +24,7 @@ namespace MidlaneSharp
                 Shockwave = 3,
             }
             
-            private List<Tuple<Command, Obj_AI_Hero>> WorkQueue;
+            private ConcurrentQueue<Tuple<Command, Obj_AI_Hero>> WorkQueue;
             private Vector3 _position;
             private SPrediction.Collision Collision;
 
@@ -45,7 +46,7 @@ namespace MidlaneSharp
             public event dOnProcessCommand OnProcessCommand;
             public BallMgr()
             {
-                WorkQueue = new List<Tuple<Command, Obj_AI_Hero>>();
+                WorkQueue = new ConcurrentQueue<Tuple<Command, Obj_AI_Hero>>();
                 Collision = new SPrediction.Collision();
                 Position = ObjectManager.Player.ServerPosition;
                 Game.OnUpdate += Game_OnUpdate;
@@ -55,11 +56,7 @@ namespace MidlaneSharp
 
             public void Post(Command cmd, Obj_AI_Hero t)
             {
-                lock (WorkQueue)
-                {
-                    WorkQueue.RemoveAll(p => p.Item1 == cmd && p.Item2 == t);
-                    WorkQueue.Add(new Tuple<Command, Obj_AI_Hero>(cmd, t));
-                }
+                WorkQueue.Enqueue(new Tuple<Command, Obj_AI_Hero>(cmd, t));
             }
 
             public void Process(int count = 1)
@@ -69,15 +66,8 @@ namespace MidlaneSharp
                     Tuple<Command, Obj_AI_Hero> cmd;
                     for (int i = 0; i < count; i++)
                     {
-                        if (WorkQueue.Count == 0)
-                            return;
-
-                        cmd = WorkQueue[0];
-                        if (cmd != null)
-                        {
+                        if (WorkQueue.TryDequeue(out cmd))
                             OnProcessCommand(cmd.Item1, cmd.Item2);
-                            WorkQueue.RemoveAt(0);
-                        }
                     }
                 }
             }
