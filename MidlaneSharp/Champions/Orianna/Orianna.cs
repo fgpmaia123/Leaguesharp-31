@@ -26,7 +26,7 @@ namespace MidlaneSharp
             combo = new Menu("Combo", "Combo");
             combo.AddItem(new MenuItem("CUSEQ", "Use Q").SetValue(true));
             combo.AddItem(new MenuItem("CUSEW", "Use W").SetValue(true));
-            combo.AddItem(new MenuItem("CUSEE", "Use E").SetValue(true));
+            combo.AddItem(new MenuItem("CUSEE", "Use E For Damage Enemy").SetValue(true));
             //
             ult = new Menu("R Settings", "rsetting");
             ult.AddItem(new MenuItem("CUSER", "Use R").SetValue(true));
@@ -39,7 +39,7 @@ namespace MidlaneSharp
             harass = new Menu("Harass", "Harass");
             harass.AddItem(new MenuItem("HUSEQ", "Use Q").SetValue(true));
             harass.AddItem(new MenuItem("HUSEW", "Use W").SetValue(true));
-            harass.AddItem(new MenuItem("HUSEE", "Use E").SetValue(true));
+            harass.AddItem(new MenuItem("HUSEE", "Use E For Damage Enemy").SetValue(true));
             harass.AddItem(new MenuItem("HMANA", "Min. Mana Percent").SetValue(new Slider(50, 0, 100)));
 
             laneclear = new Menu("Lane/Jungle Clear", "LaneClear");
@@ -266,11 +266,11 @@ namespace MidlaneSharp
             
             if (Spells[W].IsReady() && Config.Item("CUSEW").GetValue<bool>())
             {
-                if (CountEnemiesInRangePredicted(Spells[W].Range, 0.25f, 230) > 0)
+                if (Ball.Position.CountEnemiesInRange(Spells[W].Range) > 0)
                     Ball.Post(BallMgr.Command.Dissonance, null);
             }
 
-            if (Spells[E].IsReady() && Config.Item("CUSEE").GetValue<bool>())
+            if (Spells[E].IsReady() && !Spells[W].IsReady() && Config.Item("CUSEE").GetValue<bool>())
             {
                 if (Ball.CheckHeroCollision(ObjectManager.Player.ServerPosition))
                     Ball.Post(BallMgr.Command.Protect, ObjectManager.Player);
@@ -291,11 +291,11 @@ namespace MidlaneSharp
 
             if (Spells[W].IsReady() && Config.Item("HUSEW").GetValue<bool>())
             {
-                if (CountEnemiesInRangePredicted(Spells[W].Range, 0.25f, 230) > 0)
+                if (Ball.Position.CountEnemiesInRange(Spells[W].Range) > 0)
                     Ball.Post(BallMgr.Command.Dissonance, null);
             }
 
-            if (Spells[E].IsReady() && Config.Item("HUSEE").GetValue<bool>())
+            if (Spells[E].IsReady() && !Spells[W].IsReady() && Config.Item("HUSEE").GetValue<bool>())
             {
                 if (Ball.CheckHeroCollision(ObjectManager.Player.ServerPosition))
                     Ball.Post(BallMgr.Command.Protect, ObjectManager.Player);
@@ -309,14 +309,14 @@ namespace MidlaneSharp
 
             if (Spells[Q].IsReady() && Config.Item("LUSEQ").GetValue<bool>())
             {
-                var farm = MinionManager.GetBestCircularFarmLocation(MinionManager.GetMinions(Spells[Q].Range / 2f, MinionTypes.All, MinionTeam.Enemy, MinionOrderTypes.None).Select(p => p.ServerPosition.To2D()).ToList(), Spells[Q].Width, Spells[Q].Range);
+                var farm = MinionManager.GetBestCircularFarmLocation(MinionManager.GetMinions(Spells[Q].Range / 2f, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.None).Select(p => p.ServerPosition.To2D()).ToList(), Spells[Q].Width, Spells[Q].Range);
                 if (farm.MinionsHit > 0 && Ball.IsBallReady)
                     Spells[Q].Cast(farm.Position); 
             }
 
             if (Spells[W].IsReady() && Config.Item("LUSEW").GetValue<bool>())
             {
-                if (ObjectManager.Get<Obj_AI_Minion>().Count(p => p.IsEnemy && p.ServerPosition.Distance(Ball.Position) <= Spells[W].Range) >= Config.Item("LMINW").GetValue<Slider>().Value)
+                if (ObjectManager.Get<Obj_AI_Minion>().Count(p => (p.IsEnemy || p.IsJungleMinion()) && p.ServerPosition.Distance(Ball.Position) <= Spells[W].Range) >= Config.Item("LMINW").GetValue<Slider>().Value)
                     Ball.Post(BallMgr.Command.Dissonance, null);
             }
 

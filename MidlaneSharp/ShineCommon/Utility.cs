@@ -42,6 +42,24 @@ namespace ShineCommon
         public static string[] HitchanceNameArray = { "Low", "Medium", "High", "Very High", "Only Immobile" };
         public static HitChance[] HitchanceArray = { HitChance.Low, HitChance.Medium, HitChance.High, HitChance.VeryHigh, HitChance.Immobile };
 
+        private static string[] JungleMinions;
+
+        static Utility()
+        {
+            if (LeagueSharp.Common.Utility.Map.GetMap().Type.Equals(LeagueSharp.Common.Utility.Map.MapType.TwistedTreeline))
+            {
+                JungleMinions = new string[] { "TT_Spiderboss", "TT_NWraith", "TT_NGolem", "TT_NWolf" };
+            }
+            else
+            {
+                JungleMinions = new string[]
+                    {
+                        "SRU_Blue", "SRU_Gromp", "SRU_Murkwolf", "SRU_Razorbeak", "SRU_Red", "SRU_Krug", "SRU_Dragon",
+                        "SRU_Baron", "Sru_Crab"
+                    };
+            }
+        }
+
         public static int GetPriority(string championName)
         {
             if (lowPriority.Contains(championName))
@@ -54,6 +72,11 @@ namespace ShineCommon
                 return 3;
 
             return 2;
+        }
+
+        public static bool IsJungleMinion(this Obj_AI_Base unit)
+        {
+            return JungleMinions.Contains(unit.Name);
         }
 
         public static bool IsImmobilizeBuff(BuffType type)

@@ -36,10 +36,10 @@ namespace ShineCommon.Activator
                 else
                 {
                     JungleMinions = new string[]
-                {
-                    "SRU_Blue", "SRU_Gromp", "SRU_Murkwolf", "SRU_Razorbeak", "SRU_Red", "SRU_Krug", "SRU_Dragon",
-                    "SRU_Baron", "Sru_Crab"
-                };
+                    {
+                        "SRU_Blue", "SRU_Gromp", "SRU_Murkwolf", "SRU_Razorbeak", "SRU_Red", "SRU_Krug", "SRU_Dragon",
+                        "SRU_Baron", "Sru_Crab"
+                    };
                 }
                 #endregion
 
