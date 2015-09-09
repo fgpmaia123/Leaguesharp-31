@@ -1,4 +1,4 @@
-﻿﻿/*
+/*
  Copyright 2015 - 2015 SPrediction
  Prediction.cs is part of SPrediction
  
@@ -42,7 +42,6 @@ namespace SPrediction
 
         private static string lastDrawHitchance;
         private static Vector2 lastDrawPos;
-        private static Vector2 __pos;
         private static Vector2 lastDrawDirection;
         private static int lastDrawTick;
         private static int lastDrawWidth;
@@ -1142,11 +1141,7 @@ namespace SPrediction
 
                 Drawing.DrawText(Drawing.Width - 200, 0, System.Drawing.Color.Red, String.Format("Casted Spell Count: {0}", castCount));
                 Drawing.DrawText(Drawing.Width - 200, 20, System.Drawing.Color.Red, String.Format("Hit Spell Count: {0}", hitCount));
-                Drawing.DrawText(Drawing.Width - 200, 40, System.Drawing.Color.Red, String.Format("Hitchance (%): {0}%", (((float)hitCount / (castCount + 1)) * 100).ToString("00.00")));
-
-                if (__pos != Vector2.Zero)
-                    Drawing.DrawCircle(__pos.To3D(), 70, System.Drawing.Color.Red);
-
+                Drawing.DrawText(Drawing.Width - 200, 40, System.Drawing.Color.Red, String.Format("Hitchance (%): {0}%", castCount > 0 ? (((float)hitCount / castCount) * 100).ToString("00.00") : "n/a"));
             }
         }
 
